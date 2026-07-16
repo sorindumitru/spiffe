@@ -32,8 +32,8 @@ Bundles features.
 3\.1\. [Locating the Credential Folder](#locating-the-credential-folder)
 3\.2\. [Loading and Refreshing the Credential Bundle](#loading-and-refreshing-the-credential-bundle)
 3\.3\. [Validating Peer SPIFFE Certificates](#validating-peer-spiffe-certificates)
-Appendix A. [Filesystem Delivery and the Workload API](#appendix-filesystem-delivery-vs-the-workload-api)
-Appendix B. [Example Kubernetes Setup](#appendix-example-kubernetes-setup)
+Appendix A. [Filesystem Delivery and the Workload API](#filesystem-delivery-vs-the-workload-api)
+Appendix B. [Example Kubernetes Setup](#example-kubernetes-setup)
 
 
 ## 1. Participants {#participants}
