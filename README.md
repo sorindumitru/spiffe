@@ -41,6 +41,7 @@ SPIFFE is a [graduated](https://www.cncf.io/projects/spiffe/) project of the [Cl
 * [The SPIFFE Workload Endpoint](standards/SPIFFE_Workload_Endpoint.md)
 * [The SPIFFE Workload API](standards/SPIFFE_Workload_API.md)
 * [SPIFFE Federation](standards/SPIFFE_Federation.md)
+* [SPIFFE Filesystem Delivery](standards/SPIFFE_Filesystem_Delivery.md)
 
 ## Getting Started
 
