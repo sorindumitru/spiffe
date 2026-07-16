@@ -18,10 +18,6 @@ systems a concrete target to aim for:
 * Where applications should look to discover these credentials.
 * How applications should read them.
 
-As a concrete target, all of the features required by this specification are
-natively available in Kubernetes using the Pod Certificates and Cluster Trust
-Bundles features.
-
 ## Table of Contents {#toc}
 
 1\. [Participants](#participants)
@@ -55,9 +51,9 @@ filesystem.
 * Verify X.509 SVIDs presented by peers, including peers in different trust
   domains.
 
-## 2. Credential Folder {#credential-folder}
+## 2. X.509 Credential Folder {#x509-credential-folder}
 
-A credential folder contains:
+An X.509 credential folder contains:
 * A single credential bundle, named `credential-bundle.pem`
 * One or more trust bundles, named `<trust-domain>.spiffe-trust-bundle.pem`
 
@@ -74,7 +70,7 @@ system and application must be coordinated so that the application knows where
 to find the alternate credential folders, and in which circumstances they should
 be used.
 
-### 2.1 Credential Bundle {#credential-bundle}
+### 2.1 X.509 Credential Bundle {#x509-credential-bundle}
 
 A credential bundle file contains the application's private key and certificate
 chain.  Combining these together into one file ensures that the provisioning
@@ -85,20 +81,22 @@ the application must also read this file atomically, as described in section
 The credential bundle consists of two or more PEM blocks.  The first block must
 be of type PRIVATE KEY, and contain a PKCS#8-serialized private key.
 
-The remaining PEM blocks must be of type CERTIFICATE, and contain the
+The following PEM blocks must be of type CERTIFICATE, and contain the
 application's certificate chain, in leaf-to-root order.  The leaf certificate
 must be issued to the public key derived from the PRIVATE KEY block.  The leaf
-certificate SHOULD be an X.509 SVID.
+certificate MUST be an X.509 SVID.
 
 The certificate chain MAY contain the trust anchor ("root certificate") of the
 chain, or it MAY stop at the certificate preceding the trust anchor.
+
+The last PEM block must be of type SPIFFE HINT and contain the SVID's hint.
 
 The credential bundle:
 * MUST NOT contain any other PEM block types.
 * MUST NOT contain any inter-block data.
 * MUST NOT contain any PEM blocks that have PEM headers.
 
-The provisioning system SHOULD update the credential bundle on the filesystem
+The provisioning system SHOULD update the X.509 credential bundle on the filesystem
 with a new key and certificate chain before the leaf certificate currently in
 the bundle expires. The provisioning system SHOULD make these updates
 atomically, so that an application reading the credential bundle reads either
@@ -110,12 +108,12 @@ credential-bundle.pem file could compromise the security of TLS sessions. The
 provisioning system SHOULD be configured to limit access to the
 credential-bundle.pem file to only the necessary user(s).
 
-### 2.2 SPIFFE Trust Bundles {#spiffe-trust-bundles}
+### 2.2 X.509 SPIFFE Trust Bundles {#spiffe-trust-bundles}
 
-The credential folder will contain one or more trust bundles, one per trust
+The credential folder will contain one or more X.509 trust bundles, one per trust
 domain that the provisioning system is configured to federate with.
 
-Each trust bundle file MUST be named following the pattern
+Each X.509 trust bundle file MUST be named following the pattern
 "<trust-domain>.spiffe-trust-bundle.pem".  The file contents are one or more PEM
 CERTIFICATE blocks, each with a PKIX-serialized certificate that is a trust
 anchor for the trust domain.  In most cases, a trust anchor is a root
@@ -148,24 +146,9 @@ procedure:
    4](https://spiffe.io/docs/latest/spiffe-specs/spiffe_workload_endpoint/#4-locating-the-endpoint)
    to determine if the SPIFFE Workload API is available.
 2. If the applications supports an application-specific configuration mechanism
-   for picking a SPIFFE credential folder, it use the credential folder
+   for picking a SPIFFE credential folder, it SHOULD use the credential folder
    indicated by that configuration.
-3. Otherwise, if the SPIFFE_CREDENTIAL_FOLDER environment variable is set, and
-   contains a valid path for the platform, the application should treat that
-   folder as the credential folder to use.
-4. Otherwise, the application should check for the existence of a
-   platform-specific default credential folder, and use it if it is present.
-5. Otherwise, the application has not been issued SPIFFE credentials.
-
-On platforms that use the Filesystem Hierarchy Standard, such as Linux, the
-application should check the following default credential folders, in descending
-order of preference:
-1) `/run/secrets/workload-spiffe-credentials/credential-bundle.pem`
-2) `/var/run/secrets/workload-spiffe-credentials/credential-bundle.pem`
-  
-On most systems, `/var/run` is a symlink to `/run`, or vice-versa.  However this
-may not be true in some containerized environments, especially those that use
-distroless base images.
+3. Otherwise, the application has not been issued SPIFFE credentials.
 
 ### 3.2 Loading and Refreshing the Credential Bundle {#loading-and-refreshing-the-credential-bundle}
 
@@ -184,11 +167,15 @@ open/read/close cycles.  This is true even if the provisioning system atomically
 writes the updated content.
 
 The provisioning system may periodically update the credential bundle on the
-filesystem.  The application SHOULD reload the credential bundle as soon as
-reasonably possible after the provisioning system updating it.  The application
-SHOULD NOT assume that the updated bundle will have any commonality with the
-previous bundle.  For example, the type of the private key may be different, or
-the certificate may be issued from a different root, with different
+filesystem.  The application MUST reload the credential bundle as soon as
+reasonably possible after the provisioning system updating it.  If not dictated
+otherwise by application configuration, the application should refresh the credential
+bundle at least every 5 minutes or half of the TTL of the leaf certificate, whichever
+is shorter.
+
+The application MUST NOT assume that an updated bundle will have any
+commonality with the previous bundle.  For example, the type of the private key may
+be different, or the certificate may be issued from a different root, with different
 intermediates.
 
 ### 3.3 Validating Peer SPIFFE Certificates {#validating-peer-spiffe-certificates}
@@ -207,7 +194,7 @@ The provisioning system may periodically update the number and contents of the
 per-trust-domain trust bundles in the filesystem.  The application MAY cache the
 presence, absence, and contents of each trust domain's trust bundle in memory,
 but it SHOULD reflect updates from the filesystem as soon as reasonably
-possible.
+possible. It is recommended to reload the bundle at least every 5 minutes.
 
 The application SHOULD handle de-federation; if it has loaded a trust bundle for
 trust domain X, and then X's trust bundle is removed from the credential folder,
